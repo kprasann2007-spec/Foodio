@@ -29,6 +29,16 @@ const List = ({url}) => {
         }
     }
 
+    const updatePrice = async (foodId, price) => {
+        const response = await axios.post(`${url}/api/food/update`, { id: foodId, price: Number(price) });
+        if (response.data.success) {
+            setlist(items => items.map(item => item._id === foodId ? { ...item, price: Number(price) } : item));
+            toast.success("Price updated");
+        } else {
+            toast.error("Could not update price");
+        }
+    }
+
     useEffect(()=>{
         fetchList();
     },[])
@@ -50,7 +60,7 @@ const List = ({url}) => {
                     <img src={`${url}/images/`+item.image} alt="" />
                     <p>{item.name}</p>
                     <p>{item.category}</p>
-                    <p>${item.price}</p>
+                    <label className="price-editor">₹<input type="number" min="0" value={item.price} onChange={(event) => updatePrice(item._id, event.target.value)} /></label>
                     <p onClick={()=>removeFood(item._id)} className='cursor'>X</p>
                 </div>
             )

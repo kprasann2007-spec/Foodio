@@ -1,78 +1,19 @@
-.food-item{
-    width: 100%;
-    margin:auto;
-    border-radius: 15px;
-    box-shadow: 0px 0px 10px #00000015;
-    transition: 0.3s;
-    animation: fadeIn 1s;
-}
-.food-item-img{
-    width: 100%;
-    border-radius: 15px 15px 0px 0px;
-}
-.food-item-info{
-    padding: 20px;
-}
-.food-item-name-rating{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-.food-item-name-rating p{
-    font-size: 20px;
-    font-weight: 500;
-}
-.food-item-name-rating img{
-    width: 70px;
-}
-.food-item-desc{
-    color: #676767;
-    font-size: 12px;
-}
-.food-item-price{
-    color: tomato;
-    font-weight: 500;
-    font-size: 22px;
-    margin: 10px 0px;
-}
-.food-item-img-container{
-    position: relative;
-}
-.food-item-img-container .add{
-    width: 35px;
-    bottom: 15px;
-    position: absolute;
-   right: 15px;
-   cursor: pointer;
-   border-radius: 50%;  
-}
-.food-item-counter{
-    position: absolute;
-    bottom : 15px;
-    right: 15px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding : 6px;
-    border-radius: 50px;
-    background-color: white;
-}
-.food-item-counter img{
-    width : 30px;
-}
-.food-item {
-  width: 100%;
-  margin: auto;
-  border-radius: 15px;
-  box-shadow: 0px 0px 10px #00000015;
-  
-  /* 1. Add this transition line so the hover animation is perfectly smooth */
-  transition: transform 0.3s ease, box-shadow 0.3s ease; 
-}
-
-/* 2. ADD THIS NEW HOCK BLOCK BELOW: */
-.food-item:hover {
-  transform: translateY(-6px); /* 👈 Gently lifts the card upward by 6px */
-  box-shadow: 0px 10px 20px #00000025; /* 👈 Deepens the shadow underneath to simulate height */
-}
+.food-item { overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: 0 5px 16px rgba(31,48,35,.04); animation: cardEnter .5s ease-out both; transition: transform .25s, box-shadow .25s; }
+.food-item:nth-child(2) { animation-delay: .06s; }.food-item:nth-child(3) { animation-delay: .12s; }.food-item:nth-child(4) { animation-delay: .18s; }.food-item:nth-child(5) { animation-delay: .24s; }.food-item:nth-child(6) { animation-delay: .3s; }.food-item:nth-child(7) { animation-delay: .36s; }.food-item:nth-child(8) { animation-delay: .42s; }
+.food-item:hover { transform: translateY(-7px); box-shadow: var(--shadow); }
+.food-item-img-container { position: relative; overflow: hidden; aspect-ratio: 1.2; background: #f3eee5; }
+.food-item-img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+.food-item:hover .food-item-img { transform: scale(1.04); }
+.food-item-info { padding: 17px 17px 18px; }
+.food-item-name-rating { display: flex; gap: 8px; justify-content: space-between; align-items: start; }
+.food-item-name-rating h3 { font-size: 1.03rem; line-height: 1.2; }
+.food-item-name-rating img { width: 61px; height: auto; margin-top: 2px; }
+.food-item-desc { display: -webkit-box; margin-top: 10px; overflow: hidden; color: var(--muted); font-size: .78rem; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.food-item-restaurant { margin-top: 9px; overflow: hidden; color: var(--brand); font-size: .72rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.food-item-price { margin-top: 14px; color: var(--brand); font-size: 1.17rem; font-weight: 700; }
+.add { display: grid; position: absolute; right: 14px; bottom: 14px; width: 42px; height: 42px; place-items: center; border: 0; border-radius: 50%; background: var(--brand); box-shadow: 0 6px 16px rgba(18,69,46,.25); transition: transform .2s, background .2s; }
+.add:hover { transform: scale(1.08); background: var(--brand-dark); }.add img { width: 24px; }
+.food-item-counter { display: flex; position: absolute; right: 12px; bottom: 12px; align-items: center; gap: 8px; padding: 5px; border-radius: 999px; background: #fff; box-shadow: 0 5px 15px rgba(0,0,0,.14); }
+.food-item-counter button { display: grid; width: 29px; height: 29px; place-items: center; border: 0; background: transparent; }.food-item-counter img { width: 23px; }.food-item-counter p { min-width: 15px; font-weight: 700; text-align: center; }
+@keyframes cardEnter { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 650px) { .food-item-info { padding: 13px; } .food-item-name-rating h3 { font-size: .9rem; } .food-item-name-rating img { display: none; } .food-item-desc { font-size: .72rem; } .food-item-price { margin-top: 10px; font-size: 1.05rem; } }

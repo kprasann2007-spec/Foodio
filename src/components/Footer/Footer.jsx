@@ -7,7 +7,10 @@ const Footer = () => {
     <div className = 'footer' id ='footer'>
         <div className="footer-content">
             <div className = 'footer-content-left'>
-    <img src={assets.logo} alt="" />
+    <div className="footer-logo-container">
+        <img src={assets.footer_icon} alt="" className="footer-logo-icon" />
+        <h2 className="footer-logo">FOODIO</h2>
+    </div>
     <p> Order your favorite meals from the best local restaurants right to your doorstep. We bring fresh, delicious, and high-quality food prepared by top chefs directly to you with fast and reliable delivery.</p>
     <div className = 'footer-social-icons'>
     <img src = {assets.facebook_icon} alt="" />
@@ -28,12 +31,12 @@ const Footer = () => {
                 <h2> GET IN TOUCH</h2>
                 <ul>
                 <li>+1 -696-969-6969</li>
-                <li>contact@tomato.com</li>
+                <li>contact@foodio.com</li>
                 </ul>
             </div>
         </div>
         <hr />
-        <p className = 'footer-copyright'>Copyright 2024 ©️ Tomato.com -All Right Reserved.</p>
+        <p className = 'footer-copyright'>Copyright 2024 ©️ Foodio.com -All Right Reserved.</p>
       
     </div>
   )

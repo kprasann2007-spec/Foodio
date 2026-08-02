@@ -13,6 +13,7 @@
 .list-table-format img{
     width:50px;
 }
+.price-editor { display: flex; align-items: center; gap: 3px; font-weight: 600; }.price-editor input { width: 65px; padding: 6px; border: 1px solid #cfd8d0; border-radius: 5px; outline-color: #597060; }
 @media (max-width:600px){
     .list-table-format{
         grid-template-columns: 1fr 3fr 1fr;

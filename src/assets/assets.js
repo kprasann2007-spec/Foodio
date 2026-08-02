@@ -1,6 +1,7 @@
 import basket_icon from './basket_icon.png'
-import logo from './logo.png'
-import header_img from './header_img.png'
+import logo from './logo.jpg'
+import footer_icon from './footer_icon.jpg'
+import header_img from './header_img.jpg'
 import search_icon from './search_icon.png'
 import menu_1 from './menu_1.png'
 import menu_2 from './menu_2.png'
@@ -62,6 +63,7 @@ import parcel_icon from './parcel_icon.png'
 
 export const assets = {
     logo,
+    footer_icon,
     basket_icon,
     header_img,
     search_icon,
@@ -115,6 +117,36 @@ export const menu_list = [
         menu_name: "Noodles",
         menu_image: menu_8
     }]
+
+export const restaurants = [
+    {
+        id: "green-garden",
+        name: "Green Garden Kitchen",
+        type: "Pure vegetarian",
+        rating: 4.9,
+        description: "Wholesome vegetarian comfort food",
+        badge: "100% Veg",
+        menuIds: ["1", "2", "3", "6", "8", "9", "10", "11", "12", "14", "17", "21", "22", "23", "24", "25", "30"]
+    },
+    {
+        id: "spice-house",
+        name: "Spice House",
+        type: "Veg & non-veg",
+        rating: 4.7,
+        description: "Bold Indian favourites with a modern touch",
+        badge: "Chef's pick",
+        menuIds: ["4", "5", "7", "15", "18", "26", "29"]
+    },
+    {
+        id: "wok-and-grill",
+        name: "Wok & Grill",
+        type: "Veg & non-veg",
+        rating: 4.6,
+        description: "Asian-inspired bowls, grills, and comfort plates",
+        badge: "New kitchen",
+        menuIds: ["13", "16", "19", "20", "27", "28", "31", "32"]
+    }
+]
 
 export const food_list = [
     {
