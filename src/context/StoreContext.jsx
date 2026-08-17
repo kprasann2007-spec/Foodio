@@ -5,8 +5,9 @@ export const StoreContext = createContext(null);
 
 const StoreContextProvider = (props) => {
   const [cartItems, setCartItems] = useState({});
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [food_list, setFoodList] = useState(initialFoodList);
+  const url = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
   const addToCart = (itemId) => {
     if (!cartItems[itemId]) {
@@ -40,7 +41,8 @@ const StoreContextProvider = (props) => {
     removeFromCart,
     getTotalCartAmount,
     token,
-    setToken
+    setToken,
+    url
   };
 
   return (

@@ -22,7 +22,7 @@ const loginUser=async(req,res)=>{
         res.json({success:true,token})
     }catch(error){
         console.log(error);
-        res.json({success:false,message:"Error"})
+        res.status(503).json({success:false,message:"Database connection is unavailable. Check MONGODB_URI and database network access."})
     }
 }
 
@@ -32,7 +32,9 @@ const createToken=(id)=>{
 
 //register user
 const registerUser=async(req,res)=>{
-    const {name,password,email}=req.body;
+    const {name,password,email,role}=req.body;
+    const allowedRoles=["customer","restaurant","delivery"];
+    const userRole=allowedRoles.includes(role)?role:"customer";
     try{
         //checking is user already exists
         const exists=await userModel.findOne({email});
@@ -55,7 +57,8 @@ const registerUser=async(req,res)=>{
         const newUser=new userModel({
             name:name,
             email:email,
-            password:hashedPassword
+            password:hashedPassword,
+            role:userRole
         })
         const user=await newUser.save()
         const token=createToken(user._id)
@@ -63,7 +66,7 @@ const registerUser=async(req,res)=>{
     }
     catch(error){
         console.log(error);
-        res.json({success:false,message:"Error"})
+        res.status(503).json({success:false,message:"Database connection is unavailable. Check MONGODB_URI and database network access."})
     }
 }
 
