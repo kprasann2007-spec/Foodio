@@ -1,5 +1,4 @@
 # Foodio
-# Foodio
 
 Foodio is a food delivery app that brings the entire ordering experience online in one platform.
 
