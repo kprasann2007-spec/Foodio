@@ -18,6 +18,15 @@ const trackingSteps = [
     )
   },
   {
+    name: 'Accepted',
+    icon: (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+      </svg>
+    )
+  },
+  {
     name: 'Preparing your food',
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -92,30 +101,24 @@ const MyOrders = () => {
     return () => clearInterval(refreshInterval)
   }, [token])
 
-  return (
-    <div className="my-orders">
-      <div className="my-orders-heading">
-        <div>
-          <h2>My Orders</h2>
-          <div className="live-updates-container">
-            <p><span className="live-dot"></span> Live updates refresh every 15 seconds</p>
-            <button 
-              type="button" 
-              className={`refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
-              onClick={handleManualRefresh}
-              disabled={isRefreshing}
-              aria-label="Refresh orders"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-              </svg>
-              <span>Refresh Now</span>
-            </button>
-          </div>
-        </div>
-      </div>
+  const activeOrders = data.filter((order) => {
+    const currentStatus = legacyStatus[order.status] || order.status
+    return currentStatus !== 'Delivered'
+  })
+
+  const pastOrders = data.filter((order) => {
+    const currentStatus = legacyStatus[order.status] || order.status
+    return currentStatus === 'Delivered'
+  })
+
+  const renderOrderList = (ordersList) => {
+    if (ordersList.length === 0) {
+      return <p className="empty-orders-message">No orders found in this section.</p>
+    }
+
+    return (
       <div className="containers">
-        {data.map((order) => {
+        {ordersList.map((order) => {
           const currentStatus = legacyStatus[order.status] || order.status
           const currentStep = Math.max(0, trackingStepNames.indexOf(currentStatus))
           const isExpanded = expandedOrder === order._id
@@ -150,6 +153,42 @@ const MyOrders = () => {
           )
         })}
       </div>
+    )
+  }
+
+  return (
+    <div className="my-orders">
+      <div className="my-orders-heading">
+        <div>
+          <h2>My Orders</h2>
+          <div className="live-updates-container">
+            <p><span className="live-dot"></span> Live updates refresh every 15 seconds</p>
+            <button 
+              type="button" 
+              className={`refresh-btn ${isRefreshing ? 'refreshing' : ''}`}
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              aria-label="Refresh orders"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              <span>Refresh Now</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      {renderOrderList(activeOrders)}
+
+      <div className="my-orders-heading past-orders-heading-container">
+        <div>
+          <h2 className="past-orders-heading">Past Orders</h2>
+          <p>Orders that have been successfully delivered to you.</p>
+        </div>
+      </div>
+
+      {renderOrderList(pastOrders)}
     </div>
   )
 }

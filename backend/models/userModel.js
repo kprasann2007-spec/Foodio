@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
         enum:["customer","restaurant","delivery"],
         default:"customer"
     },
+    restaurantName:{type:String},
     cartData:{type:Object,default:{}}
 },{minimize:false})
 

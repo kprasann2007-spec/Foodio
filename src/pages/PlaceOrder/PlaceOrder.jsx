@@ -13,14 +13,14 @@ const loadRazorpay = () => new Promise((resolve) => {
 })
 
 const PlaceOrder = () => {
-  const { cartItems, food_list, getTotalCartAmount, setCartItems, token, url } = useContext(StoreContext)
+  const { cartItems, food_list, getTotalCartAmount, setCartItems, token, url, promoCode, discountAmount, setPromoCode, setDiscountAmount } = useContext(StoreContext)
   const navigate = useNavigate()
   const [address, setAddress] = useState({ firstName: '', lastName: '', email: '', street: '', city: '', state: '', zipCode: '', country: '', phone: '' })
   const [paymentMethod, setPaymentMethod] = useState('razorpay')
   const [isPaying, setIsPaying] = useState(false)
   const [error, setError] = useState('')
   const subtotal = getTotalCartAmount()
-  const total = subtotal === 0 ? 0 : subtotal + 20
+  const total = subtotal === 0 ? 0 : Math.max(0, subtotal + 20 - discountAmount)
 
   const updateAddress = (event) => setAddress((previous) => ({ ...previous, [event.target.name]: event.target.value }))
 
@@ -32,11 +32,13 @@ const PlaceOrder = () => {
     const response = await fetch(`${url}/api/order/cod`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', token },
-      body: JSON.stringify({ items: getItems(), address })
+      body: JSON.stringify({ items: getItems(), address, promoCode: promoCode || null })
     })
     const result = await response.json()
     if (!response.ok || !result.success) throw new Error(result.message || 'Unable to place the COD order.')
     setCartItems({})
+    setPromoCode("")
+    setDiscountAmount(0)
     navigate('/myorders')
   }
 
@@ -56,7 +58,7 @@ const PlaceOrder = () => {
       const response = await fetch(`${url}/api/order/place`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', token },
-        body: JSON.stringify({ items: getItems(), address })
+        body: JSON.stringify({ items: getItems(), address, promoCode: promoCode || null })
       })
       const order = await response.json()
       if (!response.ok || !order.success) throw new Error(order.message || 'Unable to start payment.')
@@ -83,6 +85,8 @@ const PlaceOrder = () => {
             const result = await verification.json()
             if (!verification.ok || !result.success) throw new Error(result.message || 'Payment could not be verified.')
             setCartItems({})
+            setPromoCode("")
+            setDiscountAmount(0)
             navigate('/myorders')
           } catch (verificationError) {
             setError(verificationError.message)
@@ -126,6 +130,15 @@ const PlaceOrder = () => {
           <div>
             <div className="cart-total-details"><p>Subtotal</p><p>₹{subtotal}</p></div><hr />
             <div className="cart-total-details"><p>Delivery Fee</p><p>₹{subtotal === 0 ? 0 : 20}</p></div><hr />
+            {discountAmount > 0 && (
+              <>
+                <div className="cart-total-details">
+                  <p>Discount ({promoCode})</p>
+                  <p style={{ color: "#d94e34", fontWeight: "600" }}>-₹{discountAmount}</p>
+                </div>
+                <hr />
+              </>
+            )}
             <div className="cart-total-details"><b>Total</b><b>₹{total}</b></div>
           </div>
           {error && <p className="payment-error" role="alert">{error}</p>}

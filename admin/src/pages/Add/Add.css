@@ -1,35 +1,106 @@
-.add{
-    width: 70%;
-    margin-left: max(5vw,25px);
-    margin-top: 50px;
-    color: #6d6d6d;
-    font-size: 16px;
+.add {
+  width: 78%;
+  margin-left: max(3vw, 20px);
+  margin-top: 30px;
+  color: var(--ink);
 }
-.add form{
-    gap: 20px;
+
+.add-form-container {
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 30px;
+  box-shadow: var(--shadow);
+  max-width: 600px;
+  margin-bottom: 50px;
+  gap: 22px !important;
 }
-.add-img-upload img{
-    width: 120px;
+
+.upload-preview-img {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+  background: #fbfdfb;
+  transition: all 0.2s ease;
 }
-.add-product-name, .add-product-description{
-    width: max(40%,280px);
+
+.upload-preview-img:hover {
+  border-color: var(--green);
+  background: #f4faf6;
 }
-.add-product-name input, .add-product-description textarea{
-    padding: 10px;
+
+.image-tip {
+  color: var(--muted);
+  font-size: 0.72rem;
+  margin-top: -4px;
 }
-.add-category-price{
-    display: flex;
-    gap: 30px;
+
+.add p {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 2px;
 }
-.add-category-price select, .add-category-price input{
-    max-width: 120px;
-    padding: 10px;
+
+.readonly-input {
+  background: #f5f6f1 !important;
+  color: var(--muted) !important;
+  cursor: not-allowed;
+  font-weight: 500;
 }
-.add-btn{
-    max-width: 120px;
-    border: none;
-    padding: 10px;
-    background-color: black;
-    color: white;
-    cursor: pointer;
+
+.add input,
+.add textarea,
+.add select {
+  font: inherit;
+  font-size: 0.88rem;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  outline: none;
+  background: #fff;
+  color: var(--ink);
+  transition: border-color 0.2s ease;
+  width: 100%;
+}
+
+.add input:focus,
+.add textarea:focus,
+.add select:focus {
+  border-color: var(--green);
+}
+
+.add-category-price {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.add-btn {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 25px;
+  background: var(--green);
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+  box-shadow: 0 4px 10px rgba(30, 113, 73, 0.2);
+}
+
+.add-btn:hover {
+  background: var(--green-hover);
+  transform: translateY(-1px);
+}
+
+@media(max-width: 900px) {
+  .add {
+    width: 95%;
+    margin-left: 10px;
+  }
 }

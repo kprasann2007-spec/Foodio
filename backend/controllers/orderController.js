@@ -1,5 +1,7 @@
 import orderModel from "../models/orderModel.js";
 import userModel from "../models/userModel.js";
+import foodModel from "../models/foodModel.js";
+import promoModel from "../models/promoModel.js";
 import crypto from "crypto";
 
 const DELIVERY_FEE = 20;
@@ -40,27 +42,92 @@ const createRazorpayOrder = async (amount, receipt) => {
     return data;
 };
 
-// Create a pending local order and a matching Razorpay order.
+// Create pending local orders split by restaurant and a matching Razorpay order.
 const placeOrder = async (req, res) => {
     try {
-        const amount = calculateOrderAmount(req.body.items);
-        if (!amount || !req.body.address) {
+        const items = req.body.items;
+        if (!items || items.length === 0 || !req.body.address) {
             return res.status(400).json({ success: false, message: "Cart and delivery details are required" });
         }
 
+        // Group items by restaurantId
+        const groups = {};
+        for (const item of items) {
+            const food = await foodModel.findById(item._id);
+            const rId = food ? (food.restaurantId || "green-garden") : "green-garden";
+            const rName = food ? (food.restaurantName || "Green Garden Kitchen") : "Green Garden Kitchen";
+            const foodPrice = food ? food.price : item.price;
+            
+            if (!groups[rId]) {
+                groups[rId] = {
+                    name: rName,
+                    items: []
+                };
+            }
+            groups[rId].items.push({
+                ...item,
+                price: foodPrice
+            });
+        }
+
+        const totalSubtotal = items.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0);
+        
+        // Re-validate and calculate promo discount securely
+        let discountTotal = 0;
+        let appliedPromo = null;
+        if (req.body.promoCode) {
+            appliedPromo = await promoModel.findOne({ code: req.body.promoCode.toUpperCase().trim() });
+            if (appliedPromo && appliedPromo.isActive && new Date(appliedPromo.expiryDate) >= new Date()) {
+                const userCount = appliedPromo.userUsage ? (appliedPromo.userUsage.get(req.body.userId) || 0) : 0;
+                if ((appliedPromo.usageLimit === null || appliedPromo.usageCount < appliedPromo.usageLimit) && 
+                    (appliedPromo.userUsageLimit === null || userCount < appliedPromo.userUsageLimit)) {
+                    
+                    if (totalSubtotal >= appliedPromo.minOrderValue) {
+                        if (appliedPromo.discountType === "percentage") {
+                            discountTotal = (totalSubtotal * appliedPromo.discountValue) / 100;
+                            if (appliedPromo.maxDiscount !== null && discountTotal > appliedPromo.maxDiscount) {
+                                discountTotal = appliedPromo.maxDiscount;
+                            }
+                        } else {
+                            discountTotal = appliedPromo.discountValue;
+                        }
+                        if (discountTotal > totalSubtotal) {
+                            discountTotal = totalSubtotal;
+                        }
+                        discountTotal = Math.round(discountTotal);
+                    }
+                }
+            }
+        }
+
+        const finalTotalPayable = totalSubtotal + DELIVERY_FEE - discountTotal;
         const receipt = `foodio_${Date.now()}`;
-        const razorpayOrder = await createRazorpayOrder(amount, receipt);
-        const newOrder = new orderModel({
-            userId: req.body.userId,
-            items: req.body.items,
-            amount,
-            address: req.body.address,
-            paymentMethod: "razorpay",
-            status: "Order Confirmed",
-            statusHistory: [{ status: "Order Confirmed", updatedAt: new Date() }],
-            razorpayOrderId: razorpayOrder.id
-        });
-        await newOrder.save();
+        const razorpayOrder = await createRazorpayOrder(finalTotalPayable, receipt);
+
+        const savedOrders = [];
+        // Save a separate order for each restaurant group
+        for (const [rId, group] of Object.entries(groups)) {
+            const groupSubtotal = group.items.reduce((total, item) => total + item.price * item.quantity, 0);
+            const groupDiscountShare = totalSubtotal > 0 ? Math.round((groupSubtotal / totalSubtotal) * discountTotal) : 0;
+            const amount = groupSubtotal + DELIVERY_FEE - groupDiscountShare;
+            
+            const newOrder = new orderModel({
+                userId: req.body.userId,
+                items: group.items,
+                amount,
+                address: req.body.address,
+                paymentMethod: "razorpay",
+                status: "Order Confirmed",
+                statusHistory: [{ status: "Order Confirmed", updatedAt: new Date() }],
+                razorpayOrderId: razorpayOrder.id,
+                restaurantId: rId,
+                restaurantName: group.name,
+                promoCode: appliedPromo ? appliedPromo.code : null,
+                discountAmount: groupDiscountShare
+            });
+            await newOrder.save();
+            savedOrders.push(newOrder);
+        }
 
         res.json({
             success: true,
@@ -68,7 +135,7 @@ const placeOrder = async (req, res) => {
             amount: razorpayOrder.amount,
             currency: razorpayOrder.currency,
             razorpayOrderId: razorpayOrder.id,
-            localOrderId: newOrder._id
+            localOrderId: savedOrders[0]?._id
         });
     } catch (error) {
         console.log(error);
@@ -78,23 +145,95 @@ const placeOrder = async (req, res) => {
 
 const placeCodOrder = async (req, res) => {
     try {
-        const amount = calculateOrderAmount(req.body.items);
-        if (!amount || !req.body.address) {
+        const items = req.body.items;
+        if (!items || items.length === 0 || !req.body.address) {
             return res.status(400).json({ success: false, message: "Cart and delivery details are required" });
         }
 
-        const newOrder = new orderModel({
-            userId: req.body.userId,
-            items: req.body.items,
-            amount,
-            address: req.body.address,
-            paymentMethod: "cod",
-            status: "Order Confirmed",
-            statusHistory: [{ status: "Order Confirmed", updatedAt: new Date() }]
-        });
-        await newOrder.save();
-        await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
+        // Group items by restaurantId
+        const groups = {};
+        for (const item of items) {
+            const food = await foodModel.findById(item._id);
+            const rId = food ? (food.restaurantId || "green-garden") : "green-garden";
+            const rName = food ? (food.restaurantName || "Green Garden Kitchen") : "Green Garden Kitchen";
+            const foodPrice = food ? food.price : item.price;
 
+            if (!groups[rId]) {
+                groups[rId] = {
+                    name: rName,
+                    items: []
+                };
+            }
+            groups[rId].items.push({
+                ...item,
+                price: foodPrice
+            });
+        }
+
+        const totalSubtotal = items.reduce((total, item) => total + Number(item.price) * Number(item.quantity), 0);
+
+        // Re-validate and calculate promo discount securely
+        let discountTotal = 0;
+        let appliedPromo = null;
+        if (req.body.promoCode) {
+            appliedPromo = await promoModel.findOne({ code: req.body.promoCode.toUpperCase().trim() });
+            if (appliedPromo && appliedPromo.isActive && new Date(appliedPromo.expiryDate) >= new Date()) {
+                const userCount = appliedPromo.userUsage ? (appliedPromo.userUsage.get(req.body.userId) || 0) : 0;
+                if ((appliedPromo.usageLimit === null || appliedPromo.usageCount < appliedPromo.usageLimit) && 
+                    (appliedPromo.userUsageLimit === null || userCount < appliedPromo.userUsageLimit)) {
+                    
+                    if (totalSubtotal >= appliedPromo.minOrderValue) {
+                        if (appliedPromo.discountType === "percentage") {
+                            discountTotal = (totalSubtotal * appliedPromo.discountValue) / 100;
+                            if (appliedPromo.maxDiscount !== null && discountTotal > appliedPromo.maxDiscount) {
+                                discountTotal = appliedPromo.maxDiscount;
+                            }
+                        } else {
+                            discountTotal = appliedPromo.discountValue;
+                        }
+                        if (discountTotal > totalSubtotal) {
+                            discountTotal = totalSubtotal;
+                        }
+                        discountTotal = Math.round(discountTotal);
+                    }
+                }
+            }
+        }
+
+        // Save a separate order for each restaurant group
+        for (const [rId, group] of Object.entries(groups)) {
+            const groupSubtotal = group.items.reduce((total, item) => total + item.price * item.quantity, 0);
+            const groupDiscountShare = totalSubtotal > 0 ? Math.round((groupSubtotal / totalSubtotal) * discountTotal) : 0;
+            const amount = groupSubtotal + DELIVERY_FEE - groupDiscountShare;
+            
+            const newOrder = new orderModel({
+                userId: req.body.userId,
+                items: group.items,
+                amount,
+                address: req.body.address,
+                paymentMethod: "cod",
+                status: "Order Confirmed",
+                statusHistory: [{ status: "Order Confirmed", updatedAt: new Date() }],
+                restaurantId: rId,
+                restaurantName: group.name,
+                promoCode: appliedPromo ? appliedPromo.code : null,
+                discountAmount: groupDiscountShare
+            });
+            await newOrder.save();
+        }
+
+        // Increment usage count for COD instantly
+        if (appliedPromo) {
+            appliedPromo.usageCount += 1;
+            const currentUsage = appliedPromo.userUsage ? (appliedPromo.userUsage.get(req.body.userId) || 0) : 0;
+            if (!appliedPromo.userUsage) {
+                appliedPromo.userUsage = new Map();
+            }
+            appliedPromo.userUsage.set(req.body.userId, currentUsage + 1);
+            await appliedPromo.save();
+        }
+
+        await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
         res.json({ success: true, message: "Cash on delivery order placed" });
     } catch (error) {
         console.log(error);
@@ -105,9 +244,7 @@ const placeCodOrder = async (req, res) => {
 const verifyPayment = async (req, res) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
-        const order = await orderModel.findOne({ razorpayOrderId: razorpay_order_id, userId: req.body.userId });
-        if (!order) return res.status(404).json({ success: false, message: "Order not found" });
-
+        
         const expectedSignature = crypto
             .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
             .update(`${razorpay_order_id}|${razorpay_payment_id}`)
@@ -119,9 +256,27 @@ const verifyPayment = async (req, res) => {
             && crypto.timingSafeEqual(expectedSignatureBuffer, receivedSignature);
         if (!isValid) return res.status(400).json({ success: false, message: "Payment verification failed" });
 
-        order.payment = true;
-        order.razorpayPaymentId = razorpay_payment_id;
-        await order.save();
+        // Retrieve the order to check for applied promo code before updating
+        const firstOrder = await orderModel.findOne({ razorpayOrderId: razorpay_order_id });
+        if (firstOrder && firstOrder.promoCode) {
+            const promo = await promoModel.findOne({ code: firstOrder.promoCode.toUpperCase().trim() });
+            if (promo) {
+                promo.usageCount += 1;
+                const currentUsage = promo.userUsage ? (promo.userUsage.get(req.body.userId) || 0) : 0;
+                if (!promo.userUsage) {
+                    promo.userUsage = new Map();
+                }
+                promo.userUsage.set(req.body.userId, currentUsage + 1);
+                await promo.save();
+            }
+        }
+
+        // Update all orders with this razorpayOrderId as paid
+        await orderModel.updateMany(
+            { razorpayOrderId: razorpay_order_id },
+            { $set: { payment: true, razorpayPaymentId: razorpay_payment_id } }
+        );
+
         await userModel.findByIdAndUpdate(req.body.userId, { cartData: {} });
 
         res.json({ success: true, message: "Payment verified" });
@@ -141,8 +296,9 @@ const userOrders = async (req, res) => {
         res.json({ success: false, message: "Error fetching orders" });
     }
 };
+
 //listing orders for admin panel
-const listOrders =async(req,res)=>{
+const listOrders = async(req,res)=>{
     try {
         const orders=await orderModel.find({});
         res.json({success:true,data:orders})
@@ -150,9 +306,9 @@ const listOrders =async(req,res)=>{
         console.log(error);
         res.json({success:false,message:"Error"})
     }
-
 };
-// update order status (admin panel)
+
+// update order status (admin / restaurant / delivery)
 const updateStatus = async (req, res) => {
     try {
         const order = await orderModel.findById(req.body.orderId);
@@ -170,4 +326,137 @@ const updateStatus = async (req, res) => {
     }
 };
 
-export { placeOrder, placeCodOrder, verifyPayment, userOrders ,listOrders,updateStatus};
+// Get all incoming orders (unassigned and not rejected by the current delivery partner)
+const getIncomingOrders = async (req, res) => {
+    try {
+        const deliveryPartnerId = req.body.userId;
+        const orders = await orderModel.find({
+            deliveryPartnerId: null,
+            status: { $nin: ["Delivered"] },
+            rejectedBy: { $ne: deliveryPartnerId }
+        });
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching incoming orders" });
+    }
+};
+
+// Accept an order (delivery partner)
+const acceptOrder = async (req, res) => {
+    try {
+        const deliveryPartnerId = req.body.userId;
+        const { orderId } = req.body;
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.json({ success: false, message: "Order not found" });
+        }
+        if (order.deliveryPartnerId) {
+            return res.json({ success: false, message: "Order already accepted by another partner" });
+        }
+        order.deliveryPartnerId = deliveryPartnerId;
+        order.status = "Accepted";
+        order.statusHistory = [...(order.statusHistory || []), { status: "Accepted", updatedAt: new Date() }];
+        await order.save();
+        res.json({ success: true, message: "Order accepted successfully" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error accepting order" });
+    }
+};
+
+// Decline/reject an order (delivery partner)
+const declineOrder = async (req, res) => {
+    try {
+        const deliveryPartnerId = req.body.userId;
+        const { orderId } = req.body;
+        const order = await orderModel.findById(orderId);
+        if (!order) {
+            return res.json({ success: false, message: "Order not found" });
+        }
+        if (!order.rejectedBy.includes(deliveryPartnerId)) {
+            order.rejectedBy.push(deliveryPartnerId);
+            await order.save();
+        }
+        res.json({ success: true, message: "Order declined" });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error declining order" });
+    }
+};
+
+// List active deliveries for the delivery partner
+const getActiveDeliveries = async (req, res) => {
+    try {
+        const deliveryPartnerId = req.body.userId;
+        const orders = await orderModel.find({
+            deliveryPartnerId: deliveryPartnerId,
+            status: { $ne: "Delivered" }
+        });
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching active deliveries" });
+    }
+};
+
+// List delivery history for the delivery partner
+const getDeliveryHistory = async (req, res) => {
+    try {
+        const deliveryPartnerId = req.body.userId;
+        const orders = await orderModel.find({
+            deliveryPartnerId: deliveryPartnerId,
+            status: "Delivered"
+        });
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching delivery history" });
+    }
+};
+
+// Get restaurant active/incoming orders
+const getRestaurantIncomingOrders = async (req, res) => {
+    try {
+        const restaurantId = req.body.userId;
+        const orders = await orderModel.find({
+            restaurantId: restaurantId,
+            status: { $in: ["Order Confirmed", "Accepted", "Preparing your food", "Ready for pickup"] }
+        });
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching incoming restaurant orders" });
+    }
+};
+
+// Get restaurant completed/past orders (picked up or delivered)
+const getRestaurantPastOrders = async (req, res) => {
+    try {
+        const restaurantId = req.body.userId;
+        const orders = await orderModel.find({
+            restaurantId: restaurantId,
+            status: { $in: ["Out for Delivery", "Delivered"] }
+        });
+        res.json({ success: true, data: orders });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching past restaurant orders" });
+    }
+};
+
+export { 
+    placeOrder, 
+    placeCodOrder, 
+    verifyPayment, 
+    userOrders, 
+    listOrders, 
+    updateStatus, 
+    getIncomingOrders, 
+    acceptOrder, 
+    declineOrder, 
+    getActiveDeliveries, 
+    getDeliveryHistory,
+    getRestaurantIncomingOrders,
+    getRestaurantPastOrders
+};

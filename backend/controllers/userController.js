@@ -32,10 +32,22 @@ const createToken=(id)=>{
 
 //register user
 const registerUser=async(req,res)=>{
-    const {name,password,email,role}=req.body;
+    const {name,password,email,role,restaurantName}=req.body;
     const allowedRoles=["customer","restaurant","delivery"];
     const userRole=allowedRoles.includes(role)?role:"customer";
     try{
+        if (userRole === "restaurant") {
+            if (!restaurantName || !restaurantName.trim()) {
+                return res.json({ success: false, message: "Restaurant name is required" });
+            }
+            // Check if restaurant name already exists
+            const existingRestaurant = await userModel.findOne({ role: "restaurant", restaurantName: restaurantName.trim() });
+            if (existingRestaurant) {
+                const token = createToken(existingRestaurant._id);
+                return res.json({ success: true, token, message: "Logged in to existing restaurant account" });
+            }
+        }
+
         //checking is user already exists
         const exists=await userModel.findOne({email});
         if(exists){
@@ -55,10 +67,11 @@ const registerUser=async(req,res)=>{
         const hashedPassword=await bcrypt.hash(password,salt);
 
         const newUser=new userModel({
-            name:name,
+            name: userRole === "restaurant" ? restaurantName.trim() : name,
             email:email,
             password:hashedPassword,
-            role:userRole
+            role:userRole,
+            restaurantName: userRole === "restaurant" ? restaurantName.trim() : undefined
         })
         const user=await newUser.save()
         const token=createToken(user._id)
@@ -70,4 +83,46 @@ const registerUser=async(req,res)=>{
     }
 }
 
-export {loginUser,registerUser}
+// get user profile details
+const getUserProfile = async (req, res) => {
+    try {
+        const user = await userModel.findById(req.body.userId);
+        if (!user) {
+            return res.json({ success: false, message: "User not found" });
+        }
+        res.json({
+            success: true,
+            data: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                restaurantName: user.restaurantName
+            }
+        });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching user profile" });
+    }
+};
+
+// list all restaurants
+const listRestaurants = async (req, res) => {
+    try {
+        const restaurantsList = await userModel.find({ role: "restaurant" });
+        const data = restaurantsList.map(r => ({
+            id: r._id.toString(),
+            name: r.restaurantName || r.name,
+            type: "Veg & non-veg",
+            rating: 4.5,
+            description: "Delicious freshly prepared dishes",
+            badge: "Top rated"
+        }));
+        res.json({ success: true, data });
+    } catch (error) {
+        console.log(error);
+        res.json({ success: false, message: "Error fetching restaurants" });
+    }
+};
+
+export {loginUser,registerUser,getUserProfile,listRestaurants}

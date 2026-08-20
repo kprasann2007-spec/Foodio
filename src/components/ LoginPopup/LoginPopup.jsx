@@ -9,7 +9,7 @@ const LoginPopup = ({setShowLogin}) => {
     const [currState,setCurrState]=useState("Login")
     const [accountType,setAccountType]=useState("customer")
     const { url } = useContext(StoreContext)
-    const [formData, setFormData] = useState({ name: '', email: '', password: '' })
+    const [formData, setFormData] = useState({ name: '', email: '', password: '', restaurantName: '' })
     const [error, setError] = useState('')
 
     const onChange = (event) => {
@@ -19,34 +19,32 @@ const LoginPopup = ({setShowLogin}) => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('')
-        if (accountType === "restaurant") {
-            window.location.href = "http://localhost:5174";
-        } else {
-          try {
-            const endpoint = currState === 'Login' ? 'login' : 'register'
-            const response = await fetch(`${url}/api/user/${endpoint}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(currState === 'Login'
-                ? { email: formData.email, password: formData.password }
-                : { ...formData, role: accountType })
-            })
-            const result = await response.json()
-            if (!response.ok || !result.success) throw new Error(result.message || 'Unable to sign in')
-            
-            localStorage.setItem('token', result.token)
-            setToken(result.token)
-            
-            if (accountType === "delivery") {
-                window.location.href = `http://localhost:5175?token=${result.token}`;
-            } else {
-                setShowLogin(false)
-            }
-          } catch (loginError) {
-            setError(loginError instanceof TypeError
-              ? 'Cannot reach the API server. Start it with “npm run server” inside the backend folder.'
-              : loginError.message)
+        try {
+          const endpoint = currState === 'Login' ? 'login' : 'register'
+          const response = await fetch(`${url}/api/user/${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(currState === 'Login'
+              ? { email: formData.email, password: formData.password }
+              : { ...formData, role: accountType })
+          })
+          const result = await response.json()
+          if (!response.ok || !result.success) throw new Error(result.message || 'Unable to sign in')
+          
+          localStorage.setItem('token', result.token)
+          setToken(result.token)
+          
+          if (accountType === "delivery") {
+              window.location.href = `http://localhost:5175?token=${result.token}`;
+          } else if (accountType === "restaurant") {
+              window.location.href = `http://localhost:5174?token=${result.token}`;
+          } else {
+              setShowLogin(false)
           }
+        } catch (loginError) {
+          setError(loginError instanceof TypeError
+            ? 'Cannot reach the API server. Start it with “npm run server” inside the backend folder.'
+            : loginError.message)
         }
     }
 
@@ -61,6 +59,7 @@ const LoginPopup = ({setShowLogin}) => {
         </div>
         <div className="login-popup-inputs">
             {currState==="Login"?<></>:<input name="name" value={formData.name} onChange={onChange} type="text" placeholder='Your name' required />}
+            {currState==="Sign Up" && accountType==="restaurant" && <input name="restaurantName" value={formData.restaurantName} onChange={onChange} type="text" placeholder='Restaurant Name' required />}
             <input name="email" value={formData.email} onChange={onChange} type="email" placeholder='Your email' required />
             <input name="password" value={formData.password} onChange={onChange} type="password" placeholder='Password' required />
             <select

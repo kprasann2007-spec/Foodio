@@ -11,7 +11,13 @@ const orderSchema = new mongoose.Schema({
     payment: { type: Boolean, default: false },
     paymentMethod: { type: String, enum: ["razorpay", "cod"], default: "razorpay" },
     razorpayOrderId: { type: String },
-    razorpayPaymentId: { type: String }
+    razorpayPaymentId: { type: String },
+    deliveryPartnerId: { type: String, default: null },
+    rejectedBy: { type: [String], default: [] },
+    restaurantId: { type: String },
+    restaurantName: { type: String },
+    promoCode: { type: String, default: null },
+    discountAmount: { type: Number, default: 0 }
 });
 
 const orderModel = mongoose.models.order || mongoose.model("order", orderSchema);

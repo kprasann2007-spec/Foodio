@@ -2,21 +2,20 @@ import React, { useContext, useMemo, useState } from 'react'
 import './FoodDisplay.css'
 import FoodItem from '../FoodItem/FoodItem'
 import { StoreContext } from '../../context/StoreContext'
-import { restaurants } from '../../assets/assets'
 
 const FoodDisplay = ({ category, restaurant, setRestaurant }) => {
-  const { food_list } = useContext(StoreContext)
+  const { food_list, restaurants } = useContext(StoreContext)
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState('recommended')
   const query = search.trim().toLowerCase()
 
   const enrichedRestaurants = useMemo(() => restaurants.map(place => {
-    const menu = food_list.filter(item => place.menuIds.includes(item._id))
-    const averagePrice = Math.round(menu.reduce((total, item) => total + item.price, 0) / menu.length)
-    const restaurantMatch = [place.name, place.type, place.description].some(value => value.toLowerCase().includes(query))
-    const matchingDishes = menu.filter(item => [item.name, item.category, item.description].some(value => value.toLowerCase().includes(query)))
+    const menu = food_list.filter(item => place.menuIds?.includes(item._id) || item.restaurantId === place.id)
+    const averagePrice = menu.length ? Math.round(menu.reduce((total, item) => total + item.price, 0) / menu.length) : 0
+    const restaurantMatch = [place.name, place.type || "", place.description || ""].some(value => value.toLowerCase().includes(query))
+    const matchingDishes = menu.filter(item => [item.name, item.category, item.description || ""].some(value => value.toLowerCase().includes(query)))
     return { ...place, menu, averagePrice, restaurantMatch, matchingDishes }
-  }), [food_list, query])
+  }), [food_list, restaurants, query])
 
   const matchingRestaurants = enrichedRestaurants
     .filter(place => !query || place.restaurantMatch || place.matchingDishes.length)
@@ -25,14 +24,17 @@ const FoodDisplay = ({ category, restaurant, setRestaurant }) => {
   const activeRestaurant = matchingRestaurants.find(place => place.id === restaurant)
   const visibleRestaurantIds = activeRestaurant ? [activeRestaurant.id] : matchingRestaurants.map(place => place.id)
   const dishes = food_list
-    .filter(item => visibleRestaurantIds.some(id => restaurants.find(place => place.id === id)?.menuIds.includes(item._id)))
+    .filter(item => visibleRestaurantIds.some(id => {
+      const r = restaurants.find(place => place.id === id);
+      return r?.menuIds?.includes(item._id) || item.restaurantId === id;
+    }))
     .filter(item => category === 'All' || category === item.category)
     .filter(item => {
       if (!query) return true
-      const place = enrichedRestaurants.find(candidate => candidate.menuIds.includes(item._id))
-      return place?.restaurantMatch || [item.name, item.category, item.description].some(value => value.toLowerCase().includes(query))
+      const place = enrichedRestaurants.find(candidate => candidate.menuIds?.includes(item._id) || item.restaurantId === candidate.id)
+      return place?.restaurantMatch || [item.name, item.category, item.description || ""].some(value => value.toLowerCase().includes(query))
     })
-    .map(item => ({ ...item, restaurant: restaurants.find(place => place.menuIds.includes(item._id)) }))
+    .map(item => ({ ...item, restaurant: restaurants.find(place => place.menuIds?.includes(item._id) || item.restaurantId === place.id) }))
 
   const selectRestaurant = id => setRestaurant(restaurant === id ? 'All' : id)
 
@@ -44,7 +46,7 @@ const FoodDisplay = ({ category, restaurant, setRestaurant }) => {
     </div>
     <div className='restaurant-list'>
       <button type='button' className={`restaurant-card ${restaurant === 'All' ? 'active' : ''}`} onClick={() => setRestaurant('All')}><span className='restaurant-mark'>✦</span><span><strong>All restaurants</strong><small>{matchingRestaurants.length} kitchens available</small></span></button>
-      {matchingRestaurants.map(place => <button type='button' key={place.id} className={`restaurant-card ${restaurant === place.id ? 'active' : ''}`} onClick={() => selectRestaurant(place.id)}><span className='restaurant-mark'>{place.id === 'green-garden' ? '♧' : place.id === 'spice-house' ? '✺' : '◒'}</span><span><strong>{place.name}</strong><small>★ {place.rating} · Avg. ₹{place.averagePrice}</small></span></button>)}
+      {matchingRestaurants.map(place => <button type='button' key={place.id} className={`restaurant-card ${restaurant === place.id ? 'active' : ''}`} onClick={() => selectRestaurant(place.id)}><span className='restaurant-mark'>{place.name.toLowerCase().includes('garden') ? '♧' : place.name.toLowerCase().includes('spice') ? '✺' : '◒'}</span><span><strong>{place.name}</strong><small>★ {place.rating} · Avg. ₹{place.averagePrice}</small></span></button>)}
     </div>
     {query && <p className='restaurant-intro'>{matchingRestaurants.length ? `${matchingRestaurants.length} restaurant${matchingRestaurants.length === 1 ? '' : 's'} match “${search}”.` : `No restaurant or dish matches “${search}”.`} {activeRestaurant && <button type='button' onClick={() => setRestaurant('All')}>View all matches</button>}</p>}
     {!query && activeRestaurant && <p className='restaurant-intro'>{activeRestaurant.description} <button type='button' onClick={() => setRestaurant('All')}>View all restaurants</button></p>}
